@@ -1,0 +1,97 @@
+name: CI
+
+# Standalone CI for the tamandua-core mirror. Paths are relative to the repo
+# root (no working-directory). This is the leaf dependency of the workspace and
+# has no path deps of its own.
+#
+# Feature notes:
+#   - Default (`standard`) builds out-of-the-box on every runner: no libclang.
+#   - `yara-integration` (and therefore `full`) needs libclang + a system YARA
+#     library, so it is exercised in a dedicated Ubuntu job with those deps.
+#   - The experimental `p2p` stack is intentionally NOT built here: it is fenced
+#     off by default and does not currently compile. `--all-features` is avoided
+#     for that reason.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (default features)
+        run: cargo clippy --all-targets
+
+      - name: Build (default features)
+        run: cargo build --verbose
+
+      - name: Test (default features)
+        run: cargo test --verbose
+
+  yara:
+    name: Build & Test (full / YARA, Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install libclang and YARA
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang libclang-dev libyara-dev
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build (full)
+        run: cargo build --no-default-features --features full --verbose
+
+      - name: Test (full)
+        run: cargo test --no-default-features --features full --verbose
+
+      - name: Build examples (full)
+        run: cargo build --examples --no-default-features --features full
+
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+      - name: cargo audit
+        run: cargo audit
+        continue-on-error: true

@@ -1,0 +1,123 @@
+[package]
+name = "tamandua-core"
+version = "0.1.0"
+edition = "2021"
+authors = ["Tamandua EDR Team"]
+description = "Core connectivity and detection library for Tamandua EDR"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/treant-lab/tamandua-core"
+readme = "README.md"
+
+[features]
+# Default builds out-of-the-box on any toolchain: no libclang (YARA) and no
+# experimental code. Opt into `yara-integration` (needs libclang + system YARA)
+# or the experimental `p2p` stack explicitly.
+default = ["standard"]
+standard = ["telemetry", "detection", "response", "transport"]
+# `full` = production-relevant surface. Pulls in YARA, so it requires libclang
+# and a system YARA library to build. Does NOT include the experimental `p2p`
+# feature (see below).
+full = ["standard", "yara-integration"]
+telemetry = []
+detection = []  # Detection types only, no YARA
+response = []
+transport = ["tokio", "tokio-tungstenite", "futures-util"]
+# EXPERIMENTAL / DORMANT: WireGuard/STUN/TURN/ICE NAT traversal. This stack does
+# not currently compile and is not used by any Tamandua component. Kept opt-in
+# (fenced, not deleted) for future work. Do not enable in production builds.
+p2p = ["rand", "blake2", "byteorder", "boringtun", "x25519-dalek", "hex"]
+yara-integration = ["yara", "detection"]  # Full YARA integration (needs libclang)
+mobile = []  # iOS/Android specific optimizations
+embedded = []  # Embedded device support
+# GUI feature set - everything except YARA and P2P (no libclang needed)
+gui = ["telemetry", "detection", "response", "transport"]
+
+[dependencies]
+# Core async runtime
+tokio = { version = "1.35", features = ["rt", "sync", "time", "macros"], optional = true }
+futures-util = { version = "0.3", optional = true }
+
+# WebSocket transport
+tokio-tungstenite = { version = "0.21", features = ["native-tls"], optional = true }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+
+# Compression
+flate2 = "1.0"
+
+# Cryptography
+sha2 = "0.10"
+blake3 = "1.5"
+
+# YARA integration
+yara = { version = "0.25", optional = true }
+
+# Time handling
+chrono = { version = "0.4", features = ["serde", "clock"], default-features = false }
+
+# UUID generation
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Configuration
+toml = "0.8"
+
+# System information (for process enumeration)
+sysinfo = "0.30"
+
+# P2P NAT traversal (optional)
+rand = { version = "0.8", optional = true }
+blake2 = { version = "0.10", optional = true }
+byteorder = { version = "1.5", optional = true }
+boringtun = { version = "0.6", optional = true }
+x25519-dalek = { version = "=2.0.0-rc.3", optional = true }
+hex = { version = "0.4", optional = true }
+
+# Platform-specific
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_System_Threading",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_Networking_WinSock",
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
+    "Win32_System_ProcessStatus",
+] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
+nix = { version = "0.27", features = ["process", "signal"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
+nix = { version = "0.27", features = ["process", "signal"] }
+
+[target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
+jni = { version = "0.21", optional = true }  # For Android JNI
+block = { version = "0.1", optional = true }  # For iOS blocks
+
+[dev-dependencies]
+tokio = { version = "1.35", features = ["full", "test-util"] }
+tokio-test = "0.4"
+tempfile = "3.8"
+
+[lib]
+name = "tamandua_core"
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[[example]]
+name = "embedded_agent"
+required-features = ["full"]
+
+[[example]]
+name = "mobile_integration"
+required-features = ["mobile"]
