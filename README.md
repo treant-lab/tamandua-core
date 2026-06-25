@@ -209,7 +209,8 @@ MIT OR Apache-2.0
 
 ## Contributing
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md)
+See the public community contribution guide:
+https://github.com/treant-lab/tamandua-community/blob/main/CONTRIBUTING.md
 
 ## Related Projects
 
