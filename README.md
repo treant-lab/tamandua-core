@@ -209,7 +209,7 @@ MIT OR Apache-2.0
 
 ## Contributing
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md)
+See [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ## Related Projects
 
